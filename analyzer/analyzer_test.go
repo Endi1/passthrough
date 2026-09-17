@@ -3,7 +3,7 @@ package analyzer_test
 import (
 	"testing"
 
-	"github.com/esukaj/passthrough/analyzer"
+	"github.com/Endi1/passthrough/analyzer"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

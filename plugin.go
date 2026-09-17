@@ -5,7 +5,7 @@ package passthrough
 import (
 	"fmt"
 
-	"github.com/esukaj/passthrough/analyzer"
+	"github.com/Endi1/passthrough/analyzer"
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 )
