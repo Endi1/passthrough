@@ -1,0 +1,13 @@
+version: "2"
+
+linters:
+  enable:
+    - passthrough
+  settings:
+    custom:
+      passthrough:
+        type: module
+        description: Reports structural forwarding wrappers.
+        original-url: https://github.com/esukaj/passthrough
+        settings:
+          max-extra-args: 0

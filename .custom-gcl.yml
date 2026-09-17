@@ -1,0 +1,6 @@
+version: v2.13.2
+name: golangci-lint-passthrough
+destination: ./bin
+plugins:
+  - module: github.com/Endi1/passthrough
+    path: .
