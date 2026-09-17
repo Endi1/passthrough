@@ -1,4 +1,4 @@
-module github.com/esukaj/passthrough
+module github.com/Endi1/passthrough
 
 go 1.26.0
 
