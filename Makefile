@@ -1,25 +1,25 @@
 GOLANGCI_LINT ?= golangci-lint
-CUSTOM_GOLANGCI_LINT := ./bin/golangci-lint-passthrough
+BINARY := ./bin/passthrough
 
-.PHONY: build lint test test-integration fmt-check ci clean
+.PHONY: build lint test vet fmt-check ci clean
 
 build:
-	$(GOLANGCI_LINT) custom
+	go build -o $(BINARY) ./cmd/passthrough
 
-lint: build
-	$(CUSTOM_GOLANGCI_LINT) run ./...
+lint:
+	$(GOLANGCI_LINT) run ./...
 
 test:
 	go test ./...
 
-test-integration: build
-	bash scripts/integration-test.sh $(CUSTOM_GOLANGCI_LINT)
+vet:
+	go vet ./...
 
 fmt-check:
 	@test -z "$$(gofmt -l $$(find . -name '*.go' -not -path './bin/*'))" || \
 		(gofmt -d $$(find . -name '*.go' -not -path './bin/*'); exit 1)
 
-ci: fmt-check test test-integration lint
+ci: fmt-check test vet build lint
 
 clean:
 	rm -rf bin

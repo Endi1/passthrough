@@ -11,10 +11,17 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// Name is the analyzer name used by analysis drivers.
+const Name = "passthrough"
+
+// Config controls passthrough detection.
 type Config struct {
+	// MaxExtraArgs is the maximum number of call arguments that may be something
+	// other than an unchanged function parameter.
 	MaxExtraArgs int
 }
 
+// Validate reports whether the configuration can be used by New.
 func (c Config) Validate() error {
 	if c.MaxExtraArgs < 0 {
 		return fmt.Errorf("max-extra-args must be a nonnegative integer, got %d", c.MaxExtraArgs)
@@ -23,19 +30,29 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// Default constructs a passthrough analyzer with the default configuration.
+func Default() *analysis.Analyzer {
+	return newAnalyzer(Config{})
+}
+
+// New constructs a passthrough analyzer with cfg.
 func New(cfg Config) (*analysis.Analyzer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
+	return newAnalyzer(cfg), nil
+}
+
+func newAnalyzer(cfg Config) *analysis.Analyzer {
 	return &analysis.Analyzer{
-		Name: "passthrough",
+		Name: Name,
 		Doc:  "report functions and methods that structurally pass their parameters through to one call",
 		Run: func(pass *analysis.Pass) (any, error) {
 			run(pass, cfg)
 			return nil, nil
 		},
-	}, nil
+	}
 }
 
 func run(pass *analysis.Pass, cfg Config) {
@@ -77,8 +94,10 @@ func inspectFunction(pass *analysis.Pass, cfg Config, function *ast.FuncDecl) {
 		return
 	}
 
-	parameters := make(map[*types.Var]struct{}, signature.Params().Len())
-	for parameter := range signature.Params().Variables() {
+	params := signature.Params()
+	parameters := make(map[*types.Var]struct{}, params.Len())
+	for i := 0; i < params.Len(); i++ {
+		parameter := params.At(i)
 		if parameter.Name() == "" || parameter.Name() == "_" {
 			return
 		}

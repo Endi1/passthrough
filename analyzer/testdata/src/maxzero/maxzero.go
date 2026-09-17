@@ -1,5 +1,7 @@
 package maxzero
 
+import "strings"
+
 var packageFunction = func(value string) string { return value + "!" }
 
 type pair struct{ Field string }
@@ -58,6 +60,10 @@ func functionValue(value string) string { // want `function functionValue is a p
 
 func builtin(values []string) int { // want `function builtin is a passthrough to len`
 	return len(values)
+}
+
+func standardLibrary(value string) string { // want `function standardLibrary is a passthrough to strings.TrimSpace`
+	return strings.TrimSpace(value)
 }
 
 func parenthesized(value string) string { // want `function parenthesized is a passthrough to \(target\)`
