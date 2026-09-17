@@ -1,6 +1,10 @@
 # Passthrough
 
-`passthrough` is a type-aware Go analyzer and golangci-lint module plugin that reports structural forwarding wrappers. A finding is a prompt for review, **not proof that a function should be removed**: wrappers can be intentional API, compatibility, instrumentation, or architectural boundaries.
+[![CI](https://github.com/Endi1/passthrough/actions/workflows/ci.yml/badge.svg)](https://github.com/Endi1/passthrough/actions/workflows/ci.yml)
+
+`passthrough` is a type-aware Go analyzer that reports structural forwarding wrappers. A finding is a prompt for review, **not proof that a function should be removed**: wrappers can be intentional API, compatibility, instrumentation, or architectural boundaries.
+
+The analyzer uses `golang.org/x/tools/go/analysis` and is being prepared for inclusion as a public golangci-lint linter. It is not built into stock golangci-lint yet. See the [upstream integration plan](docs/golangci-lint.md) for the remaining proposal and contribution steps.
 
 ## Detection rule
 
@@ -39,8 +43,8 @@ func Forward[T any](p T) T { return identity[T](p) }
 Not reported:
 
 ```go
-func Convert(p string) Name { return Name(p) }          // type conversion
-func Partial(a, b string) string { return target(a) }   // b is omitted
+func Convert(p string) Name { return Name(p) }           // type conversion
+func Partial(a, b string) string { return target(a) }    // b is omitted
 func Changed(p string) string { return target(trim(p)) } // p is not direct
 func Field(p Data) string { return target(p.Field) }     // p is not direct
 func Extra(p string) string { return target(p, "x") }   // needs max-extra-args >= 1
@@ -48,11 +52,30 @@ func Extra(p string) string { return target(p, "x") }   // needs max-extra-args 
 
 ### Boundaries
 
-The initial implementation analyzes `*ast.FuncDecl` values only, not function literals. Declarations without bodies, blank (`_`) or unnamed parameters, and non-call return expressions do not qualify. It does not perform whole-program analysis, judge architectural intent, exempt exported/deprecated/recursive/interface methods, or provide deletion fixes. Recursive forwarding is therefore reported when it meets the structural rule.
+The analyzer inspects `*ast.FuncDecl` values only, not function literals. Declarations without bodies, blank (`_`) or unnamed parameters, and non-call return expressions do not qualify. It does not perform whole-program analysis, judge architectural intent, exempt exported/deprecated/recursive/interface methods, or provide deletion fixes. Recursive forwarding is therefore reported when it meets the structural rule.
 
-## Configuration
+## Standalone use
 
-The default and minimum value is zero:
+Passthrough requires Go 1.22 or newer.
+
+Before the next tagged release, install it from a checkout:
+
+```sh
+go install ./cmd/passthrough
+passthrough ./...
+```
+
+After a release containing the command is published, install `github.com/Endi1/passthrough/cmd/passthrough` at that immutable tag. The standalone command uses the default `max-extra-args` value of zero. Integrators can construct a configured analyzer directly:
+
+```go
+configured, err := analyzer.New(analyzer.Config{MaxExtraArgs: 2})
+```
+
+`max-extra-args` accepts nonnegative integers only.
+
+## golangci-lint
+
+Once passthrough is accepted into golangci-lint, the intended configuration is:
 
 ```yaml
 version: "2"
@@ -60,46 +83,32 @@ linters:
   enable:
     - passthrough
   settings:
-    custom:
-      passthrough:
-        type: module
-        settings:
-          max-extra-args: 0
+    passthrough:
+      max-extra-args: 0
 ```
 
-`max-extra-args` accepts nonnegative integers only. Negative, fractional, string, null, malformed, and unknown settings are rejected during plugin construction. Configuration belongs to each plugin/analyzer instance; instances do not share mutable state.
-
-This is custom-linter configuration under `linters.settings.custom`, not a built-in golangci-lint setting.
-
-## Build and run
-
-Requirements are Go 1.26 or newer and golangci-lint 2.13.2. The versions and local plugin source are pinned in `go.mod` and `.custom-gcl.yml`.
-
-```sh
-go mod download
-make build       # creates bin/golangci-lint-passthrough
-make test
-make test-integration
-make lint
-```
-
-Run it directly with:
-
-```sh
-./bin/golangci-lint-passthrough run ./...
-```
-
-A stock golangci-lint binary cannot run the module plugin because module plugins are linked into a custom binary at build time. `golangci-lint custom` reads `.custom-gcl.yml`, imports this module, and produces that binary. The stock executable is only the builder.
-
-Suppress an intentional wrapper through golangci-lint (the analyzer itself deliberately has no suppression logic):
+Intentional wrappers can then be suppressed through golangci-lint:
 
 ```go
 //nolint:passthrough // Intentional compatibility boundary.
 func OldName(p string) string { return NewName(p) }
 ```
 
-## Tests and CI
+The previously published `v0.1.2` release remains available as a golangci-lint module plugin. Consumers of that plugin should continue pinning `github.com/Endi1/passthrough@v0.1.2`; the plugin registration was removed from the development branch to satisfy golangci-lint's public-linter requirement that linter repositories not contain `init()`.
 
-`go test ./...` runs `analysistest` fixtures and adapter/configuration tests. `make test-integration` builds the real custom binary and verifies default settings, a nondefault limit, plugin loading, and `//nolint:passthrough`. `make lint` runs the repository configuration with the custom binary.
+## Development
 
-GitHub Actions installs the pinned stock builder and invokes `make ci`; it never uses the stock executable for the lint run. For other CI systems, install `github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2` and run the same target.
+```sh
+go mod download
+make fmt-check
+make test
+make vet
+make build       # creates bin/passthrough
+make lint
+```
+
+Tests use `analysistest` fixtures for the default and configured behavior. CI runs tests, vet, and a binary build with Go 1.22, and runs golangci-lint separately with its supported Go toolchain.
+
+## License
+
+MIT; see [LICENSE](LICENSE).

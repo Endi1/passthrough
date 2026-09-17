@@ -7,6 +7,12 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
+func TestDefault(t *testing.T) {
+	if got := analyzer.Default().Name; got != analyzer.Name {
+		t.Fatalf("Default().Name = %q, want %q", got, analyzer.Name)
+	}
+}
+
 func TestAnalyzer(t *testing.T) {
 	tests := []struct {
 		name         string
